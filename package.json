@@ -8,6 +8,7 @@
   },
   "author": "",
   "license": "MIT",
+  "type": "module",
   "dependencies": {
     "dotenv": "^17.0.1",
     "express": "^5.1.0",

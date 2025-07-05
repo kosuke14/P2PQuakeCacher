@@ -57,5 +57,5 @@ app.get("/poll", (req, res) => {
 
 app.listen(PORT, (e) => {
     if (e) console.error(`Unexpected error on server start: ${e}`);
-    else console.log("Server started");
+    else console.log(`Server started on ${PORT} port`);
 });
