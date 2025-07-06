@@ -4,18 +4,19 @@ import { WebSocket } from 'ws';
 
 dotenv.config();
 const app = express();
-const P2PQUAKE_WS_BACKEND = process.env.P2PQUAKE_WS_BACKEND // "wss://api.p2pquake.net/v2/ws" or "wss://api-realtime-sandbox.p2pquake.net/v2/ws"
+const P2PQUAKE_WS_BACKEND = process.env.P2PQUAKE_WS_BACKEND; // "wss://api.p2pquake.net/v2/ws" or "wss://api-realtime-sandbox.p2pquake.net/v2/ws"
+const WOLFXJMA_WS_BACKEND = process.env.WOLFXJMA_WS_BACKEND; // "wss://ws-api.wolfx.jp/jma_eew"
 const PORT = process.env.PORT || 3000;
 
-const pendingClients = [];
+const pending_p2pClients = [];
+const pending_jmaClients = [];
 
-let wsConnection;
-function connectWS() {
-    if (wsConnection) console.log("Reconnecting WebSocket")
-    wsConnection = new WebSocket(P2PQUAKE_WS_BACKEND);
+function connectWS(target, clients) {
+    console.log(`Connecting to ${target}`);
+    const wsConnection = new WebSocket(target);
 
     wsConnection.on('open', () => {
-        console.log(`WebSocket has opened for "${P2PQUAKE_WS_BACKEND}"`);
+        console.log(`WebSocket has opened for "${target}"`);
     });
     wsConnection.on('message', (data) => {
         let got;
@@ -25,34 +26,48 @@ function connectWS() {
             return console.error(`Failed to parse: ${data}`);
         }
         if (!got) return;
-        pendingClients.forEach((res) => {
+        clients.forEach((res) => {
             if (!res.headersSent) {
                 res.json(got);
             }
         });
-        pendingClients.length = 0;
+        clients.length = 0;
     });
-    wsConnection.on('close', () => setTimeout(connectWS, 1000));
+    wsConnection.on('close', () => setTimeout(() => connectWS(target, clients), 1000));
 }
 
-connectWS();
+connectWS(P2PQUAKE_WS_BACKEND, pending_p2pClients);
+connectWS(WOLFXJMA_WS_BACKEND, pending_jmaClients);
 
-function removeClient(res) {
-    const index = pendingClients.indexOf(res);
-    if (index !== -1) pendingClients.splice(index, 1);
+function removeClient(res, clients) {
+    const index = clients.indexOf(res);
+    if (index !== -1) clients.splice(index, 1);
 }
 
-app.get("/poll", (req, res) => {
+app.get("/poll/p2p", (req, res) => {
     const timer = setTimeout(() => { // timeout if no data comes within 30 secs
-        removeClient(res);
+        removeClient(res, pending_p2pClients);
         res.status(204).end(); // No Content
     }, 30000);
 
     res.on('close', () => {
         clearTimeout(timer);
-        removeClient(res);
+        removeClient(res, pending_p2pClients);
     });
-    pendingClients.push(res);
+    pending_p2pClients.push(res);
+});
+
+app.get("/poll/jma", (req, res) => {
+    const timer = setTimeout(() => { // timeout if no data comes within 30 secs
+        removeClient(res, pending_jmaClients);
+        res.status(204).end(); // No Content
+    }, 30000);
+
+    res.on('close', () => {
+        clearTimeout(timer);
+        removeClient(res, pending_jmaClients);
+    });
+    pending_jmaClients.push(res);
 });
 
 app.listen(PORT, (e) => {

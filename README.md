@@ -1,5 +1,5 @@
 # P2PQuakeCacher
-Proxying earthquake datas from p2pquake.net to the clients which does not support WebSocket.
+Proxying earthquake datas from p2pquake.net and api.wolfx.jp to the clients which does not support WebSocket.
 ### Deploying
 1. Clone the repository.
 2. Rename `.env.example` to `.env`
